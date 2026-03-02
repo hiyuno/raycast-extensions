@@ -7,15 +7,7 @@ import { cleanDesktop } from "./lib/desktop-cleaner";
 
 const execFileAsync = promisify(execFile);
 
-interface Preferences {
-  destinationFolderName: string;
-  destinationParentPath: string;
-  moveInactiveFiles?: boolean | string;
-  inactiveDays?: string;
-  openDestinationAfterClean?: boolean | string;
-  desktopSortBy?: string;
-  ejectInstallerVolumesAfterClean?: boolean | string;
-}
+const preferences = getPreferenceValues<Preferences>();
 
 type DesktopSortOption =
   | "name"
