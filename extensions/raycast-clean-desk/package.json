@@ -1,0 +1,134 @@
+{
+  "name": "raycast-clean-desk",
+  "version": "1.0.0",
+  "title": "Clean Desk",
+  "description": "Raycast extension to clean and organize desktop files into a configurable folder",
+  "icon": "icon.png",
+  "author": "thomas",
+  "categories": [
+    "Productivity"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "clean-desktop",
+      "title": "Clean Desk",
+      "subtitle": "Clean and organize Desktop",
+      "description": "Move and organize all Desktop items into a configurable folder",
+      "mode": "no-view",
+      "icon": "icon.png",
+      "preferences": [
+        {
+          "name": "destinationFolderName",
+          "type": "textfield",
+          "required": true,
+          "title": "Destination Folder Name",
+          "description": "Name of the folder where Desktop items will be moved and organized",
+          "default": "Desk"
+        },
+        {
+          "name": "desktopSortBy",
+          "type": "dropdown",
+          "required": false,
+          "title": "Desktop Sort By",
+          "description": "Sort Desktop after cleaning",
+          "default": "name",
+          "data": [
+            {
+              "title": "Name",
+              "value": "name"
+            },
+            {
+              "title": "Kind",
+              "value": "kind"
+            },
+            {
+              "title": "Date Last Opened",
+              "value": "dateLastOpened"
+            },
+            {
+              "title": "Date Added",
+              "value": "dateAdded"
+            },
+            {
+              "title": "Date Modified",
+              "value": "dateModified"
+            },
+            {
+              "title": "Date Created",
+              "value": "dateCreated"
+            },
+            {
+              "title": "Size",
+              "value": "size"
+            },
+            {
+              "title": "Tags",
+              "value": "tags"
+            }
+          ]
+        },
+        {
+          "name": "destinationParentPath",
+          "type": "directory",
+          "required": true,
+          "title": "Destination Parent Directory",
+          "description": "Choose where the destination folder will be created",
+          "default": "~/Desktop"
+        },
+        {
+          "name": "openDestinationAfterClean",
+          "type": "checkbox",
+          "title": "Settings",
+          "label": "Open destination folder after cleaning",
+          "required": false,
+          "description": "If enabled, opens the destination folder when the process finishes",
+          "default": true
+        },
+        {
+          "name": "ejectInstallerVolumesAfterClean",
+          "type": "checkbox",
+          "label": "Eject mounted installer disks after cleaning",
+          "required": false,
+          "description": "If enabled, ejects mounted installer volumes (e.g. DMG apps) when the command finishes",
+          "default": false
+        },
+        {
+          "name": "moveInactiveFiles",
+          "type": "checkbox",
+          "label": "Enable moving inactive files to Trash",
+          "required": false,          
+          "description": "If enabled, files not opened for more than X days are moved to Trash",
+          "default": false
+        },
+        {
+          "name": "inactiveDays",
+          "type": "textfield",
+          "required": false,
+          "title": "Inactive Days",
+          "description": "Days since last access to consider a file inactive",
+          "default": "30"
+        }
+      ]
+    }
+  ],
+  "platforms": [
+    "macOS"
+  ],
+  "scripts": {
+    "build": "ray build -e dist",
+    "lint": "ray lint",
+    "fix-lint": "ray lint -f",
+    "dev": "ray develop",
+    "publish": "ray publish"
+  },
+  "dependencies": {
+    "@raycast/api": "^1.104.7"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.39.3",
+    "typescript": "^5.8.2"
+  }
+}
