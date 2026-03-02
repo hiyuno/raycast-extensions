@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0] - 2026-03-02
+## [1.0.0] - {PR_MERGE_DATE}
 
 - Initial release of Clean Desk.
 - Added desktop cleanup and categorization into Images, Videos, Folders, Screenshots, 3D Print, Trash, and Others.
