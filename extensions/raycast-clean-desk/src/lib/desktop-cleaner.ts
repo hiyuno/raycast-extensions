@@ -211,10 +211,16 @@ async function removeEmptyCategoryFolders(
 export async function cleanDesktop(
   options: CleanDesktopOptions,
 ): Promise<CleanDesktopResult> {
+export async function cleanDesktop(
+  options: CleanDesktopOptions,
+): Promise<CleanDesktopResult> {
+  // Prevent path traversal attacks
+  const safeFolderName = path.basename(options.destinationFolderName);
   const deskDir = path.join(
     options.destinationParentDir,
-    options.destinationFolderName,
+    safeFolderName,
   );
+  await mkdir(deskDir, { recursive: true });
   await mkdir(deskDir, { recursive: true });
 
   const entries = await readdir(options.desktopDir, { withFileTypes: true });
