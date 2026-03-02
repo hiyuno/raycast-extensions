@@ -243,12 +243,28 @@ export async function cleanDesktop(
     const target = path.join(deskDir, entry.name);
 
     try {
+      let tempTarget: string | null = null;
       if (options.overwrite) {
-        await rm(target, { recursive: true, force: true });
+        try {
+          await stat(target);
+          tempTarget = `${target}.raycast-backup-${Date.now()}`;
+          await rename(target, tempTarget);
+        } catch {
+          // Target doesn't exist, no backup needed
+        }
       }
 
-      await moveWithFallback(source, target);
-      movedCount += 1;
+      try {
+        await moveWithFallback(source, target);
+        movedCount += 1;
+        if (tempTarget) {
+          await rm(tempTarget, { recursive: true, force: true });
+        }
+      } catch (error) {
+        if (tempTarget) {
+          await rename(tempTarget, target);
+        }
+        failedItems.push({
     } catch (error) {
       failedItems.push({
         name: entry.name,
