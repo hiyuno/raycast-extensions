@@ -4,7 +4,7 @@
   "title": "Clean Desk",
   "description": "Raycast extension to clean and organize desktop files into a configurable folder",
   "icon": "icon.png",
-  "author": "thomas",
+  "author": "yuno",
   "categories": [
     "Productivity"
   ],
@@ -123,7 +123,7 @@
     "publish": "ray publish"
   },
   "dependencies": {
-    "@raycast/api": "^1.104.7"
+    "@raycast/api": "^1.104.8"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.1.1",
