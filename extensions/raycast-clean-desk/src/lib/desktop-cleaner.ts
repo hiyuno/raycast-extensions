@@ -100,12 +100,47 @@ function isCrossDeviceError(error: unknown): boolean {
   );
 }
 
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ENOENT"
+  );
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
 
   return String(error);
+}
+
+function sanitizeDestinationFolderName(input: string): string {
+  const normalized = input.trim().replaceAll("\\", "/");
+  const safeName = path.basename(normalized);
+
+  if (!safeName || safeName === "." || safeName === "..") {
+    throw new Error("Invalid destination folder name");
+  }
+
+  return safeName;
+}
+
+function resolveDestinationDeskDir(
+  destinationParentDir: string,
+  destinationFolderName: string,
+): { deskDir: string; safeFolderName: string } {
+  const parentDir = path.resolve(destinationParentDir);
+  const safeFolderName = sanitizeDestinationFolderName(destinationFolderName);
+  const deskDir = path.resolve(parentDir, safeFolderName);
+
+  if (!deskDir.startsWith(parentDir + path.sep)) {
+    throw new Error("Destination folder must be inside destination parent");
+  }
+
+  return { deskDir, safeFolderName };
 }
 
 async function moveWithFallback(source: string, target: string): Promise<void> {
@@ -118,6 +153,71 @@ async function moveWithFallback(source: string, target: string): Promise<void> {
 
     await cp(source, target, { recursive: true, force: true });
     await rm(source, { recursive: true, force: true });
+  }
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await stat(target);
+    return true;
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function createBackupPath(target: string): Promise<string> {
+  const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  for (let index = 0; index < 10; index += 1) {
+    const candidate = `${target}.raycast-backup-${seed}-${index}`;
+    if (!(await pathExists(candidate))) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Could not create backup path for ${path.basename(target)}`);
+}
+
+async function moveWithOverwriteSafety(
+  source: string,
+  target: string,
+  overwrite: boolean,
+): Promise<void> {
+  let backupTarget: string | null = null;
+
+  if (overwrite && (await pathExists(target))) {
+    backupTarget = await createBackupPath(target);
+    await rename(target, backupTarget);
+  }
+
+  try {
+    await moveWithFallback(source, target);
+  } catch (moveError) {
+    if (backupTarget) {
+      try {
+        await rename(backupTarget, target);
+      } catch (restoreError) {
+        throw new Error(
+          `${errorMessage(
+            moveError,
+          )}; failed to restore overwritten target: ${errorMessage(restoreError)}`,
+        );
+      }
+    }
+
+    throw moveError;
+  }
+
+  if (backupTarget) {
+    try {
+      await rm(backupTarget, { recursive: true, force: true });
+    } catch {
+      // Keep the new target and leave backup cleanup as best-effort.
+    }
   }
 }
 
@@ -211,16 +311,10 @@ async function removeEmptyCategoryFolders(
 export async function cleanDesktop(
   options: CleanDesktopOptions,
 ): Promise<CleanDesktopResult> {
-export async function cleanDesktop(
-  options: CleanDesktopOptions,
-): Promise<CleanDesktopResult> {
-  // Prevent path traversal attacks
-  const safeFolderName = path.basename(options.destinationFolderName);
-  const deskDir = path.join(
+  const { deskDir, safeFolderName } = resolveDestinationDeskDir(
     options.destinationParentDir,
-    safeFolderName,
+    options.destinationFolderName,
   );
-  await mkdir(deskDir, { recursive: true });
   await mkdir(deskDir, { recursive: true });
 
   const entries = await readdir(options.desktopDir, { withFileTypes: true });
@@ -231,10 +325,7 @@ export async function cleanDesktop(
     (entry) =>
       entry.name !== "." &&
       entry.name !== ".." &&
-      !(
-        shouldSkipDestinationFolderFromSource &&
-        entry.name === options.destinationFolderName
-      ),
+      !(shouldSkipDestinationFolderFromSource && entry.name === safeFolderName),
   );
 
   let movedCount = 0;
@@ -249,28 +340,8 @@ export async function cleanDesktop(
     const target = path.join(deskDir, entry.name);
 
     try {
-      let tempTarget: string | null = null;
-      if (options.overwrite) {
-        try {
-          await stat(target);
-          tempTarget = `${target}.raycast-backup-${Date.now()}`;
-          await rename(target, tempTarget);
-        } catch {
-          // Target doesn't exist, no backup needed
-        }
-      }
-
-      try {
-        await moveWithFallback(source, target);
-        movedCount += 1;
-        if (tempTarget) {
-          await rm(tempTarget, { recursive: true, force: true });
-        }
-      } catch (error) {
-        if (tempTarget) {
-          await rename(tempTarget, target);
-        }
-        failedItems.push({
+      await moveWithOverwriteSafety(source, target, options.overwrite);
+      movedCount += 1;
     } catch (error) {
       failedItems.push({
         name: entry.name,
@@ -308,12 +379,7 @@ export async function cleanDesktop(
 
     try {
       await mkdir(categoryDir, { recursive: true });
-
-      if (options.overwrite) {
-        await rm(target, { recursive: true, force: true });
-      }
-
-      await moveWithFallback(source, target);
+      await moveWithOverwriteSafety(source, target, options.overwrite);
       organizedCount += 1;
       categoryCounts[category] += 1;
     } catch (error) {

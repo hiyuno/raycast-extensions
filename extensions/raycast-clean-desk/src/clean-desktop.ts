@@ -7,8 +7,6 @@ import { cleanDesktop } from "./lib/desktop-cleaner";
 
 const execFileAsync = promisify(execFile);
 
-const preferences = getPreferenceValues<Preferences>();
-
 type DesktopSortOption =
   | "name"
   | "kind"
@@ -210,7 +208,7 @@ async function ejectMountedInstallerVolumes(): Promise<EjectResult> {
 
 export default async function Command() {
   const desktopDir = path.join(os.homedir(), "Desktop");
-  const preferences = getPreferenceValues<Preferences>();
+  const preferences = getPreferenceValues<Preferences.CleanDesktop>();
   const destinationFolderName =
     preferences.destinationFolderName?.trim() || "Desk";
   const destinationParentDir = expandUserPath(

@@ -14,11 +14,12 @@ async function withTempDir(run) {
   }
 }
 
-test("repro: destinationFolderName path traversal escapes destinationParentDir", async () => {
+test("prevents destinationFolderName path traversal escape", async () => {
   await withTempDir(async (root) => {
     const desktopDir = path.join(root, "Desktop");
     const destinationParentDir = path.join(root, "SafeParent");
     const expectedEscapedDir = path.join(root, "Escaped");
+    const expectedSafeDir = path.join(destinationParentDir, "Escaped");
 
     await mkdir(desktopDir, { recursive: true });
     await mkdir(destinationParentDir, { recursive: true });
@@ -34,13 +35,14 @@ test("repro: destinationFolderName path traversal escapes destinationParentDir",
       openAfter: false,
     });
 
-    assert.equal(result.deskDir, expectedEscapedDir);
-    assert.ok(!result.deskDir.startsWith(destinationParentDir + path.sep));
-    assert.equal(await readFile(path.join(expectedEscapedDir, "Others", "notes.txt"), "utf8"), "keep me");
+    assert.equal(result.deskDir, expectedSafeDir);
+    assert.ok(result.deskDir.startsWith(destinationParentDir + path.sep));
+    await assert.rejects(stat(expectedEscapedDir), { code: "ENOENT" });
+    assert.equal(await readFile(path.join(expectedSafeDir, "Others", "notes.txt"), "utf8"), "keep me");
   });
 });
 
-test("repro: overwrite deletes target before move failure (data loss)", async () => {
+test("preserves previous target when overwrite move fails", async () => {
   await withTempDir(async (root) => {
     const desktopDir = path.join(root, "Desktop");
     const destinationParentDir = path.join(desktopDir, "sub");
@@ -61,7 +63,10 @@ test("repro: overwrite deletes target before move failure (data loss)", async ()
     });
 
     assert.ok(result.failedItems.some((item) => item.name === "sub"));
-    await assert.rejects(stat(preexistingTarget), { code: "ENOENT" });
+    assert.equal(
+      await readFile(path.join(deskDir, "Folders", "sub", "important.txt"), "utf8"),
+      "must survive",
+    );
     await access(destinationParentDir);
   });
 });
